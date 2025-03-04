@@ -27,7 +27,6 @@ class GoogleMeetBot:
             time.sleep(random.uniform(0.1, 0.3))
 
     def login_to_google(self, page):
-        
         def go_to_gmail(page):
             page.goto('https://accounts.google.com/signin')
             page.wait_for_load_state('networkidle')
@@ -68,23 +67,13 @@ class GoogleMeetBot:
             raise
 
     def join_meet(self, page, meet_link):
-        """Join a Google Meet"""
-        try:
-            # First go to Google Meet home to ensure we're properly authenticated
-            print("Going to Google Meet home first...")
-            page.goto("https://meet.google.com")
-            page.wait_for_load_state('networkidle')
-            page.wait_for_timeout(3000)
-            
-            # Then navigate to the specific meeting
+        
+        def go_to_specific_meet(page, meet_link):
             if "meet.google.com/" in meet_link:
                 full_url = meet_link
             else:
                 full_url = f"https://meet.google.com/{meet_link}"
             
-            print(f"Now navigating to: {full_url}")
-            
-            # Use page.goto with referer header to look more like a regular browser
             page.set_extra_http_headers({
                 'Referer': 'https://meet.google.com/',
                 'Origin': 'https://meet.google.com'
@@ -92,32 +81,101 @@ class GoogleMeetBot:
             
             page.goto(full_url)
             page.wait_for_load_state('networkidle')
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(2000)
             
-            # Rest of your join code...
+        def handle_camera(page):
             try:
-                print("Configuring devices...")
-                # Turn off microphone if it's on
-                mic_button = page.locator('button[aria-label*="microphone"]')
-                if mic_button.is_visible():
-                    mic_button.click()
-                    print("Microphone turned off")
+                    # Method 1: Look for specific camera button
+                    camera_button = page.locator('button[aria-label="Turn off camera (ctrl + e)"]')
+                    if camera_button.is_visible():
+                        print("Found camera button (Method 1)")
+                        camera_button.click()
+                        page.wait_for_timeout(1000)
                     
-                # Turn off camera if it's on    
-                camera_button = page.locator('button[aria-label*="camera"]')
-                if camera_button.is_visible():
-                    camera_button.click()
-                    print("Camera turned off")
+                    # Method 2: Alternative camera button
+                    if not camera_button.is_visible():
+                        camera_button = page.locator('button[data-is-muted="false"]:has([aria-label*="camera"])')
+                        if camera_button.is_visible():
+                            print("Found camera button (Method 2)")
+                            camera_button.click()
+                            page.wait_for_timeout(1000)
+                    
+                    # Method 3: Try by role
+                    if not camera_button.is_visible():
+                        camera_button = page.get_by_role("button", name="Turn off camera")
+                        if camera_button.is_visible():
+                            print("Found camera button (Method 3)")
+                            camera_button.click()
+                            page.wait_for_timeout(1000)
+                    
+                    print("Camera should be disabled now")
+                    
             except Exception as e:
-                print(f"Error configuring devices: {e}")
+                print(f"Error with camera: {e}")
             
-            # Look for the join button
+        
+    
+        def handle_microphone(page):
+            try:
+                # Method 1: Look for specific microphone button
+                mic_button = page.locator('button[aria-label="Turn off microphone (ctrl + d)"]')
+                if mic_button.is_visible():
+                    print("Found mic button (Method 1)")
+                    mic_button.click()
+                    page.wait_for_timeout(1000)
+                
+                # Method 2: Alternative microphone button
+                if not mic_button.is_visible():
+                    mic_button = page.locator('button[data-is-muted="false"]:has([aria-label*="microphone"])')
+                    if mic_button.is_visible():
+                        print("Found mic button (Method 2)")
+                        mic_button.click()
+                        page.wait_for_timeout(1000)
+                
+                # Method 3: Try by role
+                if not mic_button.is_visible():
+                    mic_button = page.get_by_role("button", name="Turn off microphone")
+                    if mic_button.is_visible():
+                        print("Found mic button (Method 3)")
+                        mic_button.click()
+                        page.wait_for_timeout(1000)
+                
+                print("Microphone should be disabled now")
+                
+            except Exception as e:
+                print(f"Error with microphone: {e}")
+                
+        
+        
+        def ask_to_join(page):
             print("Looking for join button...")
-            join_button = page.locator('span[jsname="V67aGc"]')
+            join_button = page.locator('span[jsname="V67aGc"][class="UywwFc-vQzf8d"]')
             if join_button.is_visible():
                 print("Found join button, clicking...")
                 join_button.click()
                 print("Join button clicked!")
+            
+        
+        """Join a Google Meet"""
+        try:
+            # First go to Google Meet home to ensure we're properly authenticated
+            # go_to_google_meet_landing(page)
+            
+            # Then navigate to the specific meeting
+            go_to_specific_meet(page, meet_link)
+            
+            # Handle camera and microphone before joining
+            try:
+                print("Configuring devices...")
+                # Try multiple ways to find and disable camera
+                handle_camera(page)
+                # Handle microphone
+                handle_microphone(page)
+                    
+            except Exception as e:
+                print(f"Error configuring devices: {e}")
+                
+            ask_to_join(page)
             
         except Exception as e:
             print(f"Error in join_meet: {e}")
@@ -158,7 +216,7 @@ class GoogleMeetBot:
                     print("Login successful!")
                     
                     # After successful login, join the meet
-                    meet_link = "https://meet.google.com/jro-xrft-zhp"  # Replace with your meet link
+                    meet_link = "https://meet.google.com/pjq-baja-uws"  # Replace with your meet link
                     self.join_meet(page, meet_link)
                     
                     # Keep the browser open while in meeting
