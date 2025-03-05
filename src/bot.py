@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import random
 import time
+from pathlib import Path 
 
 load_dotenv()
 
@@ -10,18 +11,10 @@ class GoogleMeetBot:
     def __init__(self):
         self.email = os.getenv('GOOGLE_EMAIL')
         self.password = os.getenv('GOOGLE_PASSWORD')
+        self.meet_link = os.getenv('GOOGLE_MEET')
         
-        # Add rate limiting
-        self.min_delay = 2  # minimum seconds between actions
-        
-        # Add usage limits
-        self.max_daily_uses = 5  # reasonable limit
-        
-        # Add proper documentation
-        self.purpose = "Personal automation for educational meetings"
 
     def human_type(self, element, text):
-        """Type like a human with random delays"""
         for char in text:
             element.type(char)
             time.sleep(random.uniform(0.1, 0.3))
@@ -66,13 +59,12 @@ class GoogleMeetBot:
             print(f"Current URL: {page.url}")
             raise
 
-    def join_meet(self, page, meet_link):
-        
-        def go_to_specific_meet(page, meet_link):
-            if "meet.google.com/" in meet_link:
-                full_url = meet_link
+    def join_meet(self, page):
+        def go_to_specific_meet(page):
+            if "meet.google.com/" in self.meet_link:
+                full_url = self.meet_link
             else:
-                full_url = f"https://meet.google.com/{meet_link}"
+                full_url = f"https://meet.google.com/{self.meet_link}"
             
             page.set_extra_http_headers({
                 'Referer': 'https://meet.google.com/',
@@ -83,7 +75,7 @@ class GoogleMeetBot:
             page.wait_for_load_state('networkidle')
             page.wait_for_timeout(2000)
             
-        def handle_camera(page):
+        def disable_camera(page):
             try:
                     # Method 1: Look for specific camera button
                     camera_button = page.locator('button[aria-label="Turn off camera (ctrl + e)"]')
@@ -112,79 +104,49 @@ class GoogleMeetBot:
                     
             except Exception as e:
                 print(f"Error with camera: {e}")
-            
-        
-    
-        def handle_microphone(page):
-            try:
-                # Method 1: Look for specific microphone button
-                mic_button = page.locator('button[aria-label="Turn off microphone (ctrl + d)"]')
-                if mic_button.is_visible():
-                    print("Found mic button (Method 1)")
-                    mic_button.click()
-                    page.wait_for_timeout(1000)
-                
-                # Method 2: Alternative microphone button
-                if not mic_button.is_visible():
-                    mic_button = page.locator('button[data-is-muted="false"]:has([aria-label*="microphone"])')
-                    if mic_button.is_visible():
-                        print("Found mic button (Method 2)")
-                        mic_button.click()
-                        page.wait_for_timeout(1000)
-                
-                # Method 3: Try by role
-                if not mic_button.is_visible():
-                    mic_button = page.get_by_role("button", name="Turn off microphone")
-                    if mic_button.is_visible():
-                        print("Found mic button (Method 3)")
-                        mic_button.click()
-                        page.wait_for_timeout(1000)
-                
-                print("Microphone should be disabled now")
-                
-            except Exception as e:
-                print(f"Error with microphone: {e}")
-                
-        
         
         def ask_to_join(page):
-            print("Looking for join button...")
             join_button = page.locator('span[jsname="V67aGc"][class="UywwFc-vQzf8d"]')
             if join_button.is_visible():
                 print("Found join button, clicking...")
                 join_button.click()
-                print("Join button clicked!")
-            
+
+                play_audio_and_exit(page)
         
-        """Join a Google Meet"""
+        def play_audio_and_exit(page):
+            try:
+                print("Starting audio playback...")
+                
+                time.sleep(5)
+                
+                audio_path = Path("audio/hello.mp3")
+                
+                if os.name == 'nt':  # Windows
+                    os.system(f'start {audio_path}')
+                else:  # Mac/Linux
+                    os.system(f'afplay {audio_path}')  # This plays the audio through BlackHole
+                
+                print("Audio finished, leaving meeting...")
+                page.close()
+        
+            except Exception as e:
+                print(f"Error in audio playback: {e}")
+                page.close()  
+        
         try:
-            # First go to Google Meet home to ensure we're properly authenticated
-            # go_to_google_meet_landing(page)
-            
-            # Then navigate to the specific meeting
-            go_to_specific_meet(page, meet_link)
-            
-            # Handle camera and microphone before joining
+            go_to_specific_meet(page)
             try:
                 print("Configuring devices...")
-                # Try multiple ways to find and disable camera
-                handle_camera(page)
-                # Handle microphone
-                handle_microphone(page)
-                    
+                disable_camera(page)
             except Exception as e:
                 print(f"Error configuring devices: {e}")
-                
             ask_to_join(page)
-            
         except Exception as e:
             print(f"Error in join_meet: {e}")
-            page.screenshot(path="error.png")
             raise
 
     def run(self):
         print("Starting Google Meet Bot...")
-        
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=False,
@@ -210,17 +172,11 @@ class GoogleMeetBot:
                 page = context.new_page()
                 self.login_to_google(page)
                 
-                # Wait for login completion
                 try:
                     page.wait_for_selector('div[role="navigation"]', timeout=30000)
                     print("Login successful!")
                     
-                    # After successful login, join the meet
-                    meet_link = "https://meet.google.com/pjq-baja-uws"  # Replace with your meet link
-                    self.join_meet(page, meet_link)
-                    
-                    # Keep the browser open while in meeting
-                    input("Press Enter to leave the meeting and close the browser...")
+                    self.join_meet(page)
                     
                 except Exception as e:
                     print(f"Error after login: {e}")

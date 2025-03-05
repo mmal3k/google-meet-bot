@@ -8,8 +8,10 @@ venv/
 __pycache__/
 *.pyc
 
-src/test_bot.py
 
 
 # OS specific
 .DS_Store
+
+
+audio/
