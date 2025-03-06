@@ -4,8 +4,7 @@ A Python bot that automates joining Google Meet meetings and plays audio during 
 
 ## Features
 
-- Automatically logs into Google Meet using provided credentials.
-- Joins a specified meeting link.
+- Automatically joins a specified Google Meet meeting as a guest
 - Plays audio through the meeting using virtual audio routing.
 
 ## Requirements
@@ -36,10 +35,8 @@ A Python bot that automates joining Google Meet meetings and plays audio during 
    ```
 
 4. **Set up environment variables**:
-   Create a `.env` file in the root directory and add your Google credentials and meeting link:
+   Create a `.env` file in the root directory and add your meeting link:
    ```plaintext
-   GOOGLE_EMAIL=your_email@example.com
-   GOOGLE_PASSWORD=your_password
    GOOGLE_MEET=your_meeting_link
    ```
 
