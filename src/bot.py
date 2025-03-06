@@ -37,16 +37,6 @@ class GoogleMeetBot:
         except Exception as e:
             print(f"Error with camera: {e}")
 
-        # Fallback to text-based detection
-        for lang in ['en', 'fr']:
-            try:
-                camera_button = page.locator(f'button:has-text("{self.locales[lang][2]}")')
-                if camera_button.is_visible():
-                    camera_button.click()
-                    time.sleep(random.uniform(0.5, 1.2))
-                    break
-            except:
-                continue
 
     def join_meet(self, page):
         try:
